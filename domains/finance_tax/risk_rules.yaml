@@ -1,0 +1,71 @@
+# 风险规则：财税域的硬约束（技术方案 10.2）
+# 这些规则由引擎强制执行，域包只能加严不能放宽
+
+schema_version: "1.0"
+
+# ---------- 红线清单：命中即拒绝 ----------
+# 技术方案 4.12。扩充本清单需要财税专家评审。
+red_lines:
+  - code: false_invoice
+    name: 虚开发票
+    description: 无真实业务或与真实业务不符的开票行为
+  - code: conceal_income
+    name: 隐瞒收入
+    description: 少计收入、不申报收入
+  - code: false_declaration
+    name: 虚假申报
+    description: 提供虚假的纳税申报资料
+  - code: fraud_preference
+    name: 骗取税收优惠
+    description: 以虚构业务、伪造资料骗取减免
+  - code: dual_contract
+    name: 阴阳合同
+    description: 内外两套合同，账外经营
+  - code: shell_business
+    name: 无实质经营套取优惠
+    description: 没有实际经营却享受核定征收等优惠
+  - code: false_land
+    name: 虚假土地交易
+    description: 通过虚假土地出让金骗取土地增值税优惠
+  - code: transfer_price
+    name: 转让定价规避
+    description: 关联企业之间无商业目的的定价安排
+
+# ---------- 免责要求 ----------
+disclaimer:
+  # 什么情况下必须带免责
+  required_when:
+    - 涉及金额判断
+    - 涉及申报口径
+    - 涉及优惠适用
+    - 涉及争议处理
+  # 导出件必须带版本与时间戳（技术方案 10.2）
+  export_must_include: [version, generated_at, disclaimer]
+  text: "本内容由系统基于现行有效法规自动生成，仅供参考，不构成税务、律师等专业人士的正式意见。实际处理请以主管税务机关口径为准，重大事项请咨询执业人员。"
+
+# ---------- 输出控制 ----------
+output_control:
+  # 风险三级（技术方案 4.13）
+  risk_levels:
+    green:
+      name: 稳妥
+      action: output          # 可直接输出
+      require_review: false
+    yellow:
+      name: 审慎
+      action: output_with_prompt   # 可输出，但必须提示
+      require_review: true
+      prompt: "建议与主管税务机关沟通确认"
+    red:
+      name: 高风险
+      action: review_only     # 不直达用户，只进专家复核台
+      require_review: true
+  # 筹划功能总开关：资质主体（F2）落实前保持 false
+  planning_enabled: false
+
+# ---------- 专家复核台 ----------
+review_desk:
+  queue: planning_reviews
+  sla_hours: 24             # 响应时限
+  on_timeout: downgrade     # 超时自动降级标注，不静默放行
+  actions: [放行, 修改后放行, 驳回并说明原因]

@@ -1,0 +1,17 @@
+fastapi>=0.115,<0.116
+uvicorn[standard]>=0.34,<0.35
+pydantic>=2.10,<3
+pydantic-settings>=2.7,<3
+SQLAlchemy>=2.0.36,<2.1
+psycopg[binary]>=3.2,<4
+alembic>=1.14,<2
+redis>=5.2,<6
+qdrant-client>=1.12,<2
+httpx>=0.28,<0.29
+celery>=5.4,<6
+python-multipart>=0.0.20,<0.1
+PyJWT>=2.9,<3
+pydantic[email]>=2.10,<3
+
+# Tests
+pytest>=8.3,<9

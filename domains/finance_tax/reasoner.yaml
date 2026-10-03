@@ -1,0 +1,192 @@
+# 推理器：从法条到可执行方案的推理链（技术方案 4.4）
+
+schema_version: "1.0"
+
+# ---------- 推理五步 ----------
+steps:
+  - code: intent
+    name: 意图判定
+    description: 判断用户是问"能不能做"还是"怎么做"还是"交多少税"还是"被查了怎么办"
+    output: intent_type
+    intent_types:
+      - policy_query        # 政策查询
+      - how_to              # 办理指引
+      - calculation         # 税费计算
+      - planning            # 筹划咨询
+      - dispute             # 争议应对
+      - inspection          # 稽查应对
+  - code: applicable_filter
+    name: 适用性筛选
+    description: 主体、行业、规模、地区、业务特征是否落在该条款的适用范围内
+    must_output_not_applicable_list: true
+    # 为什么必须给"不适用清单"：让用户知道自己哪些条件不满足，而不是只看到能用的
+  - code: policy_filter
+    name: 政策筛选
+    description: 按税种、时点、地域、位阶筛选有效条款
+  - code: calculation
+    name: 计算编排
+    description: 需要算数时调用计算引擎，规则来自 tax_rules
+    engine: tax_calc
+    # 计算引擎是财税可信度的技术保障，不允许 LLM 口算
+  - code: assemble
+    name: 组装答案
+    description: 按答案模板渲染
+    template_ref: templates/default.yaml
+
+# ---------- 每步都要留痕 ----------
+traceability:
+  record: true
+  # 记录每步用了哪些条款 ID，答案才可追溯、可复核
+  store_in: verification_records
+
+# ---------- 拒答规则 ----------
+refusal_rules:
+  - code: no_knowledge
+    name: 无知识依据时拒答
+    action: refuse
+    message: "未检索到适用依据，请补充企业信息或转人工"
+  - code: red_line_hit
+    name: 命中红线
+    action: refuse_with_alternative
+    message: "该做法存在违法风险，系统不提供；以下是合规替代路径"
+  - code: time_point_missing
+    name: 时点不明确且政策已变化
+    action: clarify
+    message: "该政策在您所问的期间发生过修订，请确认适用时点"
+
+# ---------- 澄清规则 ----------
+clarification:
+  # 缺少这些信息就没法算，直接问，不要瞎猜
+  required_for_calculation:
+    - 纳税人身份（一般纳税人 / 小规模纳税人）
+    - 适用期间
+    - 业务类型
+  max_questions: 2      # 一次最多问两个问题，问多了用户会放弃
+
+# ---------- 事实抽取（推理第 1 步：把口语变成结构化要素） ----------
+# 为什么用规则而不是模型：
+#   · 这一步要求"抽不到就说抽不到"，模型容易把"我这小店"脑补成"个体工商户 + 小规模纳税人"
+#     再往下算，而用户根本没说过。规则表能保证"没写就是没写"。
+#   · 财税要素是有限且已知的（主体、税种、金额、期间、地区），不需要模型猜。
+#   · 规则可审计、可给审核专家维护，结果可复现。
+# 模型只用在"读法条判适用性"这类需要理解自然语言的地方（接入）。
+fact_extraction:
+  # 纳税人身份。顺序即优先级，先匹配到的为准。
+  taxpayer_types:
+    - value: 个体工商户
+      patterns: [个体户, 个体工商户, 小卖部, 小店, 门面店, 网店]
+      # 明确说出的主体（用户就是在报自己的身份）。
+      # "小卖部/小店"这类只是线索，不算明确说明——答案里要标"推测"。
+      stated_patterns: [个体户, 个体工商户]
+      # 这些词只是"可能是个体户"，不是明确声明，因此标记为"需确认"
+      needs_confirm: true
+    - value: 小规模纳税人
+      patterns: [小规模纳税人, 小规模, 小规模纳税]
+      stated_patterns: [小规模纳税人, 小规模纳税, 小规模]
+      needs_confirm: false
+    - value: 一般纳税人
+      patterns: [一般纳税人, 一般纳税]
+      stated_patterns: [一般纳税人, 一般纳税]
+      needs_confirm: false
+    - value: 小型微利企业
+      patterns: [小型微利企业, 小微企业, 小微]
+      # "小微企业"是俗称，用户在问题里说出来就算明确说了主体，
+      # 答案直接按这个主体给（税收口径对应"小型微利企业"，条件另说明）。
+      stated_patterns: [小型微利企业, 小微企业]
+      needs_confirm: true
+    - value: 企业
+      patterns: [我们公司, 我公司, 有限公司, 股份公司, 企业]
+      stated_patterns: [有限公司, 股份公司]
+      needs_confirm: true
+    - value: 个人
+      patterns: [我个人, 自然人, 我本人]
+      stated_patterns: [自然人]
+      needs_confirm: true
+
+  # 金额。单位换算统一到"元"。
+  amount:
+    units:
+      亿: 100000000
+      万: 10000
+      千: 1000
+    # 含税口径：出现这些词说明金额是含税的
+    includes_tax_words: [含税, 价税合计, 开票金额]
+    excludes_tax_words: [不含税, 价款, 净额]
+    # 金额的时间口径
+    period_words:
+      月: [每月, 每月销售额, 月销售额, 本月的销售额, 上月]
+      季: [每季, 季度, 本季度]
+      年: [每年, 年度, 全年, 年销售额, 去年, 上年]
+
+  # 期间
+  # scope 决定按哪个口径判断小规模纳税人的免税额：
+  #   月销售额 10 万元 / 季度销售额 30 万元（财政部 税务总局公告2023年第19号 一、）
+  # 2026-10-02 定的规则：**用户说一个月的收入就按月，说上个季度的就按季**，
+  # 所以期间识别必须带上这个维度，不能只记"是哪段时间"。
+  periods:
+    - value: 本月
+      scope: month
+      patterns: [本月, 这个月, 当月]
+    - value: 上月
+      scope: month
+      patterns: [上个月, 上月]
+    - value: 本季度
+      scope: quarter
+      patterns: [本季度, 这个季度]
+    - value: 上季度
+      scope: quarter
+      patterns: [上个季度, 上季度, 上一季度]
+    - value: 本年度
+      scope: year
+      patterns: [今年, 本年度, 全年]
+    - value: 上年度
+      scope: year
+      patterns: [去年, 上年度, 上年]
+    # 明确年月：2026年8月
+    - value: 指定月份
+      scope: month
+      patterns: ['\d{4}\s*年\s*\d{1,2}\s*月']
+    - value: 指定年度
+      scope: year
+      patterns: ['\d{4}\s*年']
+
+  # 地区（影响城建税档位）
+  regions:
+    - value: 市区
+      patterns: [市区, 城区, 市中心]
+    - value: 县城、镇
+      patterns: [县城, 镇上, 县里, 建制镇]
+    - value: 其他
+      patterns: [农村, 乡村, 郊区, 乡镇]
+
+  # 业务类型。抽出来的值要能直接对上计算引擎的税率关键词
+  # （tax_rules.yaml 里 rates[].keywords），否则算了也选不对税率。
+  business_types:
+    - value: 销售货物
+      patterns: [卖东西, 卖货, 卖了, 出售, 销售货物, 销售商品, 销货, 卖产品]
+    - value: 加工修理修配服务
+      patterns: [加工, 修理, 修配]
+    - value: 交通运输服务
+      patterns: [交通运输, 运输服务, 货运, 客运, 拉货]
+    - value: 建筑服务
+      patterns: [建筑服务, 施工, 工程款, 建筑工程]
+    - value: 不动产租赁服务
+      patterns: [出租房屋, 房屋出租, 出租厂房, 不动产租赁, 收租金]
+    - value: 有形动产租赁服务
+      patterns: [出租设备, 设备租赁, 有形动产租赁]
+    - value: 现代服务
+      patterns: [技术咨询, 咨询服务, 技术服务, 设计服务, 广告服务, 信息技术服务]
+    - value: 生活服务
+      patterns: [餐饮服务, 住宿服务, 美容服务, 旅游服务]
+    - value: 销售不动产
+      patterns: [卖房, 卖房子, 销售不动产, 转让房产]
+    - value: 转让无形资产
+      patterns: [转让专利, 转让商标, 转让土地使用权, 无形资产转让]
+    - value: 出口货物
+      patterns: [出口货物, 出口, 跨境销售]
+
+  # 企业规模要素（小微企业判定要用）
+  scale_facts:
+    从业人数: ['从业人数\s*(?:为|是|不超过)?\s*(\d+)\s*人', '员工\s*(?:有)?\s*(\d+)\s*人', '(\d+)\s*个员工']
+    资产总额: ['资产总额\s*(?:为|是|不超过)?\s*([\d.]+)\s*(亿|万)?元?']
+    应纳税所得额: ['应纳税所得额\s*(?:为|是|不超过)?\s*([\d.]+)\s*(亿|万)?元?']

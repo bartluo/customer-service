@@ -1,0 +1,74 @@
+# 答案模板（技术方案 7.2）
+#
+# 为什么答案模板要独立成一层、而不是靠提示词控制格式：
+#   · 固定段落结构，缺段直接判为生成失败，而不是"这次少了免责声明也没人发现"。
+#   · 不同问题类型用不同模板，改格式不动推理逻辑。
+#   · 免责声明由模板强制渲染，不依赖模型——它必须 100% 出现。
+#   · 输出结构化 JSON，前端按字段渲染，不靠解析自然语言。
+
+schema_version: "1.0"
+domain_id: finance_tax
+
+templates:
+  - template_id: finance_tax.answer
+    name: 财税问答（六段式）
+    description: 判定 → 依据 → 计算 → 步骤 → 风险 → 说明
+    sections:
+      - key: judgement
+        # 不叫"情形判定"：这个词是给系统看的内部分类，不是给用户看的。
+        # 用户要的是"我的问题答案是什么"，所以标题就叫"回答"。
+        title: 回答
+        required: true
+        renderer: text
+        description: 直接给结论与政策要点；用户已经说过的信息不复述
+
+      - key: basis
+        title: 政策依据
+        required: true
+        renderer: citation_list
+        description: 每条依据都带文号、条款号、效力状态与原文链接，用户可点开核对
+
+      - key: calculation
+        title: 计算过程
+        required: false
+        renderer: formula_steps
+        description: 公式 + 代入 + 结果，逐步展示；数字一律由计算引擎给出
+
+      - key: steps
+        title: 办理步骤
+        required: false
+        renderer: ordered_steps
+        require_fields: [channel, materials]
+        description: 事项、渠道、所需材料、时限
+
+      - key: risks
+        title: 需要注意
+        required: false
+        renderer: bullet_list
+        description: 边界情形、待确认事项、留抵/临界值等提示
+
+      - key: disclaimer
+        title: 说明
+        required: true
+        renderer: fixed_text
+        text: 本回答依据现行有效政策生成，具体口径以主管税务机关认定为准。
+
+  - template_id: finance_tax.clarification
+    name: 信息不足时的追问
+    description: 缺关键要素时不硬答，只输出"需要您确认什么"
+    sections:
+      - key: judgement
+        title: 需要您补充的信息
+        required: true
+        renderer: text
+
+      - key: basis
+        title: 已检索到的相关政策
+        required: false
+        renderer: citation_list
+
+      - key: disclaimer
+        title: 说明
+        required: true
+        renderer: fixed_text
+        text: 为避免给出不适用的结论，请先确认上述信息；补全后我会给出判定与依据。

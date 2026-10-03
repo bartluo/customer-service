@@ -1,0 +1,14 @@
+# 构建上下文是仓库根，这里排除掉不需要进镜像的内容
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+.venv
+.git
+docs
+frontend
+deploy
+*.log
+*.md
+README.md

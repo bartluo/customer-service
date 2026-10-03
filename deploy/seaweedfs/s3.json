@@ -1,0 +1,36 @@
+{
+  "identities": [
+    {
+      "name": "app",
+      "comment": "应用读写：只允许操作自己的桶（动作后的冒号表示限定到该桶）",
+      "credentials": [
+        { "accessKey": "cs_s3", "secretKey": "cs_s3_password" }
+      ],
+      "actions": [
+        "Read:customer-service",
+        "Write:customer-service",
+        "List:customer-service",
+        "Tagging:customer-service"
+      ]
+    },
+    {
+      "name": "backup",
+      "comment": "备份账号：只读，供备份与巡检使用",
+      "credentials": [
+        { "accessKey": "cs_s3_backup", "secretKey": "cs_s3_backup_password" }
+      ],
+      "actions": [
+        "Read:customer-service",
+        "List:customer-service"
+      ]
+    },
+    {
+      "name": "admin",
+      "comment": "运维管理员：仅人工排障时使用，应用配置里不要填这个密钥",
+      "credentials": [
+        { "accessKey": "cs_s3_admin", "secretKey": "cs_s3_admin_password" }
+      ],
+      "actions": ["Admin"]
+    }
+  ]
+}

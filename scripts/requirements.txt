@@ -1,0 +1,13 @@
+# 运维 / 采集脚本的依赖（在宿主机直接跑 scripts\ 下的脚本时用）。
+#
+# 用法（在仓库根目录）：
+#     python -m venv .venv
+#     .venv\Scripts\python.exe -m pip install -r scripts\requirements.txt
+#
+# 说明：这些脚本会 import backend/app 下的模块（解析器、索引器、检索器），
+# 所以也依赖后端的包，用 -r 引过来避免两处版本不一致。
+-r ../backend/requirements.txt
+
+# PDF 附件解析（见 ADR-0011）。
+# 官方政策法规库里有一部分文件正文只在 PDF 附件里，没有这个库就只能跳过。
+pypdf>=5,<7

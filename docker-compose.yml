@@ -1,0 +1,202 @@
+name: customer-service
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: cs_postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-cs_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cs_password}
+      POSTGRES_DB: ${POSTGRES_DB:-customer_service}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cs_user} -d ${POSTGRES_DB:-customer_service}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: cs_qdrant
+    ports:
+      - "${QDRANT_HTTP_PORT:-6333}:6333"
+      - "${QDRANT_GRPC_PORT:-6334}:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/6333"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: cs_redis
+    command: redis-server --appendonly yes
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  # 对象存储（S3 兼容）。原方案用 MinIO，但 MinIO 已下架全部社区镜像
+  # （Docker Hub 仓库 404、dl.min.io 返回 410），故改用 SeaweedFS。
+  # 决策记录：docs/adr/0004-对象存储选型.md
+  seaweedfs:
+    image: chrislusf/seaweedfs:latest@sha256:4e61d15fd35994cb1e43e1e553dff106794841fd9a99ade2fc8c8bfce4d7872d
+    container_name: cs_seaweedfs
+    # 单进程同时拉起 master + volume + filer + S3 网关（开发形态）
+    command: ["server", "-s3", "-s3.config=/etc/seaweedfs/s3.json"]
+    ports:
+      - "${S3_PORT:-9000}:8333"        # S3 API：应用与备份读写
+      - "${S3_FILER_PORT:-8888}:8888"  # 文件浏览器（对应原 MinIO 控制台）
+    volumes:
+      - seaweed_data:/data
+      - ./deploy/seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:9333/cluster/status | grep -q IsLeader"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+  s3_init:
+    image: chrislusf/seaweedfs:latest@sha256:4e61d15fd35994cb1e43e1e553dff106794841fd9a99ade2fc8c8bfce4d7872d
+    container_name: cs_s3_init
+    depends_on:
+      seaweedfs:
+        condition: service_healthy
+    environment:
+      SHELL_MASTER: seaweedfs:9333
+      S3_BUCKET: ${S3_BUCKET:-customer-service}
+    # 幂等建桶：桶已存在就跳过，避免重复启动时报错退出
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        if echo "s3.bucket.list" | /usr/bin/weed shell -master="$$SHELL_MASTER" \
+           | grep -qE "^[[:space:]]+$$S3_BUCKET[[:space:]]"; then
+          echo "bucket $$S3_BUCKET already exists"
+        else
+          echo "s3.bucket.create -name=$$S3_BUCKET" | /usr/bin/weed shell -master="$$SHELL_MASTER"
+        fi
+    restart: "no"
+
+  embedding:
+    build:
+      context: ./embedding
+    container_name: cs_embedding
+    environment:
+      EMBEDDING_BACKEND: ${EMBEDDING_BACKEND:-stub}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-BAAI/bge-m3}
+      DENSE_DIM: ${DENSE_DIM:-1024}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      # 半精度：留空=自动（有 CUDA 显卡才开，CPU 上开着更慢甚至报错）
+      EMBEDDING_USE_FP16: ${EMBEDDING_USE_FP16:-}
+      # 输入截断长度。本库最长条文 620 字，1024 足够，同时挡住超长输入
+      EMBEDDING_MAX_LENGTH: ${EMBEDDING_MAX_LENGTH:-1024}
+      # 离线模式：模型从挂载的本地目录读，不去 HuggingFace 拉（本机连不上）。
+      # 需要让它自己联网下载时，在 .env 里设 HF_HUB_OFFLINE=0。
+      HF_HUB_OFFLINE: ${HF_HUB_OFFLINE:-1}
+    ports:
+      - "${EMBEDDING_PORT:-8001}:8001"
+    volumes:
+      # 本地模型目录（只读挂载）。见 deploy/models/bge-m3/下载说明.md
+      # 为什么要挂载而不是让容器自己下载：本机访问 huggingface.co 会超时。
+      - ./deploy/models:/models:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8001/health', timeout=3).status==200 else 1)"]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+
+  backend:
+    build:
+      # 上下文是仓库根：backend 需要拿到 ../domains 才能打进镜像
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: cs_backend
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-cs_user}:${POSTGRES_PASSWORD:-cs_password}@postgres:5432/${POSTGRES_DB:-customer_service}
+      QDRANT_URL: http://qdrant:6333
+      REDIS_URL: redis://redis:6379/0
+      EMBEDDING_URL: http://embedding:8001
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      embedding:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=5).status==200 else 1)"]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: cs_worker
+    command: celery -A app.worker.celery_app worker --loglevel=info
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-cs_user}:${POSTGRES_PASSWORD:-cs_password}@postgres:5432/${POSTGRES_DB:-customer_service}
+      QDRANT_URL: http://qdrant:6333
+      REDIS_URL: redis://redis:6379/0
+      EMBEDDING_URL: http://embedding:8001
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # 前端。通过 rewrites 把 /api 反代到后端，
+  # 浏览器只面对一个地址，跨域与后端地址都只在一处配置。
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # 构建期就要确定后端地址（next 的 rewrites 会被写进构建产物）
+        BACKEND_URL: http://backend:8000
+    container_name: cs_frontend
+    environment:
+      BACKEND_URL: http://backend:8000
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  pg_data:
+  qdrant_data:
+  redis_data:
+  seaweed_data:

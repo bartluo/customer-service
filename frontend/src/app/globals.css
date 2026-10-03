@@ -1,0 +1,172 @@
+@import "tailwindcss";
+
+/* 设计基调：专业工具的克制风格，不是营销页。
+   具体取舍：
+     · 单主色（深青蓝）+ 中性灰，不用紫蓝渐变——专业用户每天看八小时，
+       高饱和配色会累，也让"警告/风险"这类语义色失去区分度；
+     · 圆角统一 4/6px。大圆角让密集表格显得松垮；
+     · 阴影只用在浮层（下拉、弹窗），列表与卡片用 1px 描边——描边不随滚动闪烁。
+   颜色全部走 CSS 变量：改主题只改这里，组件里不出现裸色值。 */
+
+:root {
+  --bg: #f6f7f8;
+  --surface: #ffffff;
+  --surface-muted: #f0f2f4;
+  --border: #d8dde3;
+  --border-strong: #b9c1ca;
+  --text: #17202a;
+  --text-muted: #5b6773;
+  --text-subtle: #7c8894;
+  --accent: #0f5c62;
+  --accent-hover: #0c4a4f;
+  --accent-soft: #e6f2f2;
+  --danger: #a4262c;
+  --danger-soft: #fdeaea;
+  --warning: #8a5a00;
+  --warning-soft: #fdf3e0;
+  --success: #1c6b3f;
+  --success-soft: #e8f5ec;
+  --focus: #1d6fd0;
+  --radius: 4px;
+  --radius-lg: 6px;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei",
+    "PingFang SC", "Hiragino Sans GB", "Source Han Sans SC", sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 键盘可达性：所有可聚焦元素统一焦点环。
+   用 :focus-visible 而不是 :focus——鼠标点击不该出现焦点环，
+   否则每次点击都闪一下，用户会觉得界面在抖。 */
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+  border-radius: 2px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.875rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.btn:hover:not(:disabled) {
+  background: var(--surface-muted);
+}
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+.btn-danger {
+  color: var(--danger);
+  border-color: #e3b4b6;
+}
+
+.field {
+  width: 100%;
+  padding: 0.5rem 0.625rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.875rem;
+}
+.field:disabled {
+  background: var(--surface-muted);
+}
+
+.label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.0625rem 0.4375rem;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--surface-muted);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.tag-danger {
+  background: var(--danger-soft);
+  border-color: #e3b4b6;
+  color: var(--danger);
+}
+.tag-warning {
+  background: var(--warning-soft);
+  border-color: #e6cd9a;
+  color: var(--warning);
+}
+.tag-success {
+  background: var(--success-soft);
+  border-color: #a9d5ba;
+  color: var(--success);
+}
+.tag-accent {
+  background: var(--accent-soft);
+  border-color: #a8cecf;
+  color: var(--accent);
+}
+
+.muted {
+  color: var(--text-muted);
+}
+.subtle {
+  color: var(--text-subtle);
+}
+/* 数字用等宽字体对齐：财税界面对齐不上，人会看错行 */
+.tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+}
+.skip-link:focus {
+  left: 0.5rem;
+  top: 0.5rem;
+  z-index: 50;
+  padding: 0.5rem 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+}

@@ -1,0 +1,170 @@
+# 财税域本体 Schema（技术方案 4.1）
+# 回答三个问题：法规怎么分层、条文怎么切、什么情况下不能引用。
+# 本文件是"结构定义"，不是数据；具体法规条文在导入。
+
+schema_version: "1.0"
+domain_id: finance_tax
+
+# ---------- 效力位阶：决定"谁大谁小" ----------
+# 数字越小位阶越高。冲突时上位法优于下位法，同位阶时新法优于旧法。
+hierarchy_levels:
+  - code: law
+    name: 法律
+    rank: 1
+    examples: [中华人民共和国税收征收管理法, 中华人民共和国增值税暂行法]
+  - code: administrative_regulation
+    name: 行政法规
+    rank: 2
+    examples: [增值税暂行条例, 税收征收管理法实施细则]
+  - code: departmental_rule
+    name: 部门规章
+    rank: 3
+    examples: [发票管理办法, 纳税申报管理办法]
+  - code: normative_document
+    name: 规范性文件
+    rank: 4
+    examples: [财税〔2019〕39号]
+  - code: local_normative
+    name: 地方规范性文件
+    rank: 5
+    examples: [各省税务局公告]
+  - code: normative_reply
+    name: 税务规范性答复
+    rank: 6
+    examples: [12366 纳税咨询答复]
+
+# ---------- 效力状态：决定"能不能引用" ----------
+# 这是财税域最关键的一条：废止与失效的条文绝不能出现在答案里（技术方案 6.2 时效验证器）
+effect_statuses:
+  - code: not_yet_effective
+    name: 尚未生效
+    citable: conditional
+    description: 已公布未到生效日；可提示"自X日起施行"，当前时点不得作为依据
+  - code: effective
+    name: 现行有效
+    citable: true
+    description: 当前有效且可作为依据引用
+  - code: partially_repealed
+    name: 部分废止
+    citable: true
+    description: 整部法规仍有效，但其中部分条/款已被废止或修改；引用前必须核对具体条款状态
+  - code: repealed
+    name: 已废止
+    citable: false
+    description: 明文废止，禁止引用
+  - code: superseded
+    name: 已被替代
+    citable: false
+    description: 被新文件整体替代，禁止直接引用，须改引新文件
+  - code: draft
+    name: 草案未发布
+    citable: false
+    description: 征求意见稿等未正式发布文本，只能用于内部研究，禁止对外引用
+
+# ---------- 条文粒度：精确到"款""项" ----------
+article_granularity:
+  - code: chapter
+    name: 章
+    order: 1
+  - code: section
+    name: 节
+    order: 2
+  - code: article
+    name: 条
+    order: 3
+    key_unit: true        # 条是引用的最小单位
+  - code: paragraph
+    name: 款
+    order: 4
+    key_unit: true        # 款也是引用单位（"第一款"）
+  - code: item
+    name: 项
+    order: 5
+    key_unit: true        # 项是引用单位（"第一项"）
+  - code: subitem
+    name: 目
+    order: 6
+    key_unit: false       # 目不单独引用
+
+# ---------- 法规关系网：为什么能"顺着查" ----------
+# 有了这些边，才能回答"这条款被哪条改过""这条优惠有什么前提"
+relation_types:
+  - code: based_on
+    name: 依据
+    description: 本文件以上位法为依据制定
+    inverse: based_on
+  - code: amended_by
+    name: 被修订
+    description: 本文件被另一文件修订
+    inverse: amends
+  - code: amends
+    name: 修订了
+    description: 本文件修订了另一文件
+    inverse: amended_by
+  - code: repealed_by
+    name: 被废止
+    description: 本文件被另一文件明文废止
+    inverse: repeals
+  - code: repeals
+    name: 废止了
+    description: 本文件废止了另一文件
+    inverse: repealed_by
+  - code: references
+    name: 引用
+    description: 正文中提及另一文件或条款
+    inverse: referenced_by
+  - code: referenced_by
+    name: 被引用
+    description: 被另一文件正文提及
+    inverse: references
+  - code: excepted_by
+    name: 被例外
+    description: 另一文件就本文件的适用排除了特定情形
+    inverse: excepts
+  - code: excepts
+    name: 例外规定
+    description: 对另一文件的适用排除特定情形
+    inverse: excepted_by
+
+# ---------- 地域维度 ----------
+regions:
+  national: 全国
+  provincial: 省级
+  municipal: 市级
+  district: 区县
+
+# ---------- 强制校验规则（不可绕过） ----------
+validations:
+  - code: no_cite_repealed
+    name: 禁止引用废止条文
+    severity: blocking      # blocking = 命中即阻断，不允许降级放行
+    rule: effect_status in (repealed, superseded, draft) → 不得作为答案依据
+  - code: no_cite_pending_before_effective
+    name: 未生效文件不得当作现行依据
+    severity: blocking
+    rule: status=not_yet_effective 且 valid_from > 当前时点 → 只能提示，不能作为依据
+  - code: time_range_required
+    name: 时效区间必填
+    severity: blocking
+    rule: 每个条文版本必须带 [valid_from, valid_to)，不允许空区间
+  - code: no_overlapping_ranges
+    name: 同一条文的时间区间不得重叠
+    severity: blocking
+    rule: 同一 article_id 的任意两个版本区间不得重叠
+  - code: cite_article_level
+    name: 引用必须精确到条/款/项
+    severity: warning
+    rule: 引用粒度不得粗于"条"
+  - code: regional_conflict_flag
+    name: 地方口径差异需提示
+    severity: warning
+    rule: 命中地方规范性文件且存在上位法时，输出需提示"以主管税务机关口径为准"
+
+# ---------- 时点语义 ----------
+time_semantics:
+  interval: "[valid_from, valid_to)"   # 左闭右开：到期当天即失效
+  open_valid_to: null                  # null 表示仍在有效期内
+  query_modes:
+    - as_of             # 时点查询：返回某天有效的版本
+    - latest            # 最新有效版本
+    - version_history   # 全部历史版本（用于政策变化提醒）

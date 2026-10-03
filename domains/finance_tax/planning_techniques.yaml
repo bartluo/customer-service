@@ -1,0 +1,284 @@
+# 筹划手法库（技术方案 4.11）
+#
+# 每个手法必须写齐六个字段：适用条件 / 法律依据 / 节税机理 / 风险等级 /
+# **滥用边界** / 被否案例。
+#
+# 滥用边界与被否案例是这套资产真正的价值所在：同一手法在合规使用和滥用之间
+# 只差一条线，把这条线明确写出来，系统才能自动附上
+# "这样用是合法的，一旦 X 就变成违法"的提示。
+#
+# ⚠ 素材状态：全部标记 draft（待财税专家确认）。确认前不对外出方案。
+#    这正是需要专家介入的原因——条数不够、口径未确认，
+#    系统就不能拿它给客户做方案。
+
+schema_version: "1.0"
+domain_id: finance_tax
+
+techniques:
+  - code: vat_small_scale_threshold
+    name: 小规模纳税人未达起征点免征增值税
+    category: 政策适用型
+    risk_level: green
+    mechanism: 税基归零型——销售额未达起征点时全额免征，不产生应纳税额。
+    conditions:
+      - field: taxpayer_type
+        op: "="
+        value: 小规模纳税人
+        description: 纳税人类型为小规模纳税人
+      - field: annual_revenue
+        op: "<="
+        value: 1200000
+        description: 年销售额不超过 120 万元（月均 10 万元口径）
+    citations:
+      - 财政部 税务总局公告2023年第19号
+      - 中华人民共和国增值税法 第二十三条
+    abuse_boundary:
+      - 为把销售额压在起征点以内而人为拆分合同、跨期调节开票时点，会被认定为不具有合理商业目的
+      - 把本应开具专用发票的业务拆成普通发票以套用免税，涉嫌虚假申报
+      - 同一客户同一笔交易人为拆成多笔，属于红线行为
+    rejected_cases:
+      - 某企业将单笔大额合同拆分为多份小额普票合同，被认定不具有合理商业目的，追缴税款并加收滞纳金
+    playbook:
+      actions:
+        - 核对当月/当季销售额是否在起征点以内
+        - 确认开票类型（普通发票与专用发票的免税口径不同）
+      steps:
+        - 每月末统计销售额，判断是否达起征点
+        - 达标的月份按规定做免税申报
+        - 保留销售明细与开票记录备查
+      evidence: [销售明细账, 开票记录, 收款流水]
+      cost: 低
+    measure:
+      tax: vat
+      kind: exempt
+
+  - code: cit_small_low_profit
+    name: 小型微利企业所得税优惠
+    category: 政策适用型
+    risk_level: green
+    mechanism: 税率优惠型——对年应纳税所得额不超过规定标准的部分减按较低实际税负征收。
+    conditions:
+      - field: entity_type
+        op: in
+        value: [有限公司, 股份有限公司, 合伙企业, 个人独资企业]
+        description: 属于企业所得税纳税主体
+      - field: taxable_income
+        op: "<="
+        value: 3000000
+        description: 年应纳税所得额不超过 300 万元
+      - field: employees
+        op: "<="
+        value: 300
+        description: 从业人数不超过 300 人
+      - field: total_assets
+        op: "<="
+        value: 50000000
+        description: 资产总额不超过 5000 万元
+    citations:
+      - 中华人民共和国企业所得税法 第二十八条
+      - 财政部 税务总局公告2023年第12号
+    abuse_boundary:
+      - 为卡在 300 万元以内而跨期调节收入费用，属于人为操纵应纳税所得额
+      - 从业人数按季度平均值计算，临时增减人员凑数会被调整
+      - 隐瞒关联方人数或资产，属于虚假申报
+    rejected_cases:
+      - 某企业年末突击签订合同推迟收入确认，以保持小型微利企业身份，被税务机关按实际业务年度归属调整
+    playbook:
+      actions:
+        - 按季度核算从业人数与资产总额的季度平均值
+        - 年度终了核算应纳税所得额是否在 300 万元以内
+      steps:
+        - 每季度末统计从业人数与资产总额
+        - 年度汇算时按优惠口径计算应纳税额
+        - 留存人数与资产的计算过程备查
+      evidence: [工资表与社保缴纳记录, 资产负债表, 年度所得税申报表]
+      cost: 低
+    measure:
+      tax: cit
+      kind: small_low_profit
+
+  - code: rd_super_deduction
+    name: 研发费用加计扣除
+    category: 政策适用型
+    risk_level: green
+    mechanism: 税基扣减型——符合条件的研发费用在据实扣除基础上再按比例加计扣除，直接减少应纳税所得额。
+    conditions:
+      - field: industry
+        op: exists
+        value: true
+        description: 属于非负面清单行业
+      - field: taxable_income
+        op: ">"
+        value: 0
+        description: 有应纳税所得额才有抵减效果
+    citations:
+      - 财政部 税务总局公告2023年第7号
+      - 中华人民共和国企业所得税法实施条例 第九十五条
+    abuse_boundary:
+      - 把常规性升级、生产性活动包装成研发活动，会被否定加计扣除
+      - 研发费用与生产经营费用未分别核算、无辅助账，无法享受
+      - 虚构研发项目、编造研发人员与工时，属于骗取税收优惠
+    rejected_cases:
+      - 某企业将常规产品升级列入研发项目并按加计扣除申报，因不具备创新性被调减
+    playbook:
+      actions:
+        - 建立研发项目台账与辅助账，按项目归集研发费用
+        - 区分研发活动与常规性升级，保留立项与验收资料
+      steps:
+        - 立项：明确研发目标、人员、预算
+        - 归集：按项目单独归集人工、直接投入、折旧等费用
+        - 申报：汇算清缴时填报加计扣除明细表
+      evidence: [研发项目立项书, 研发人员名单与工时记录, 研发费用辅助账]
+      cost: 中
+    measure:
+      tax: cit
+      kind: rd_super_deduction
+
+  - code: surcharge_half_small_business
+    name: 六税两费减半征收
+    category: 政策适用型
+    risk_level: green
+    mechanism: 税额减免型——对资源税、城建税、房产税、印花税等六项税费与两项附加按 50% 征收。
+    conditions:
+      - field: taxpayer_type
+        op: in
+        value: [小规模纳税人]
+        description: 属于增值税小规模纳税人（或小型微利企业、个体工商户）
+    citations:
+      - 财政部 税务总局公告2023年第12号
+    abuse_boundary:
+      - 优惠主体身份需真实满足，不能仅为享受减半而注册主体
+      - 已享受其他同类减免的，注意不可叠加部分
+    rejected_cases: []
+    playbook:
+      actions:
+        - 确认主体是否属于小规模纳税人 / 小型微利企业 / 个体工商户
+        - 在申报时按减半口径填报六税两费
+      steps:
+        - 确认身份与适用期间
+        - 申报时选择减免性质代码
+      evidence: [纳税人身份证明, 纳税申报表]
+      cost: 低
+    measure:
+      tax: surcharges
+      kind: halve
+
+  - code: entity_form_selection
+    name: 组织形式选择（公司 / 合伙 / 个体）
+    category: 主体架构型
+    risk_level: yellow
+    mechanism: 税种转换型——不同组织形式适用的所得税税种与税率结构不同，在特定利润规模下总税负存在差异。
+    conditions:
+      - field: flexible
+        op: truthy
+        value: can_change_entity
+        description: 主体架构可以调整
+    citations:
+      - 中华人民共和国企业所得税法 第一条
+      - 中华人民共和国个人所得税法 第二条
+    abuse_boundary:
+      - 不能仅为降低税负而拆分主体，必须有真实的组织与经营理由
+      - 拆分后各主体须有独立的人员、场所与业务，否则可能被认定为虚设
+      - 利润在主体之间人为转移，可能触发一般反避税调整
+    rejected_cases:
+      - 某企业为适用小微优惠拆分业务设立多个空壳公司，因无独立经营实质被合并调整
+    playbook:
+      actions:
+        - 比较不同组织形式在目标利润下的综合税负
+        - 评估调整主体的实施成本与经营影响
+      steps:
+        - 测算：分别按公司制与合伙制测算综合税负
+        - 论证：形成书面的组织调整商业理由
+        - 实施：办理设立 / 变更登记，落实人员与场所
+      evidence: [组织架构方案, 商业理由说明, 新设主体的经营资料]
+      cost: 高
+    measure: {}
+
+  - code: revenue_timing
+    name: 收入确认时点安排
+    category: 时点安排型
+    risk_level: yellow
+    mechanism: 时点递延型——在税法允许的范围内选择收入确认年度，实现纳税义务的递延。
+    conditions:
+      - field: flexible
+        op: truthy
+        value: can_change_timing
+        description: 交易时点可以调整
+    citations:
+      - 中华人民共和国企业所得税法实施条例 第九条
+    abuse_boundary:
+      - 跨年度人为操纵收入确认时点以调节利润，会被按权责发生制调整
+      - 必须有真实合同条款与履约进度支撑，事后补签文件无效
+      - 与关联方之间的时点安排更容易被质疑
+    rejected_cases: []
+    playbook:
+      actions:
+        - 梳理合同条款中的收入确认与结算时点
+        - 在税法允许范围内调整交易时点
+      steps:
+        - 梳理：列出跨期合同的确认时点
+        - 调整：在不改变业务实质的前提下协商条款
+        - 留存：保留履约进度与验收记录
+      evidence: [合同文本, 履约进度记录, 验收单]
+      cost: 低
+    measure: {}
+
+  - code: equipment_one_off_deduction
+    name: 设备器具一次性税前扣除
+    category: 资产与投资型
+    risk_level: green
+    mechanism: 时点递延型（加速扣除）——符合条件的设备器具允许在投入使用当期一次性扣除，提前释放所得税。
+    conditions:
+      - field: industry
+        op: exists
+        value: true
+        description: 购入符合条件的新设备器具
+    citations:
+      - 财政部 税务总局关于中小微企业设备器具所得税税前扣除有关政策的公告
+    abuse_boundary:
+      - 设备必须真实购入并投入使用，仅签合同未实际交付的不能扣除
+      - 单位价值与用途需符合规定口径
+    rejected_cases: []
+    playbook:
+      actions:
+        - 盘点当年购入的设备器具，判断是否符合一次性扣除条件
+        - 在投入使用当期的申报中做扣除
+      steps:
+        - 盘点：确认设备购入时间、金额与用途
+        - 申报：在当期企业所得税申报中一次性扣除
+        - 留存：保留购置发票与资产卡片
+      evidence: [购置发票, 资产验收单, 固定资产卡片]
+      cost: 低
+    measure:
+      tax: cit
+      kind: equipment_one_off
+
+  - code: regional_preference
+    name: 区域性税收优惠适用
+    category: 区域型
+    risk_level: red
+    mechanism: 税率优惠型——特定区域内的鼓励类产业可享受较低企业所得税率。
+    conditions:
+      - field: region
+        op: in
+        value: [自贸区, 保税区, 西部大开发地区, 特定园区, 海南自由贸易港]
+        description: 企业位于或考虑迁入特定优惠区域
+    citations:
+      - 中华人民共和国企业所得税法 第二十九条
+    abuse_boundary:
+      - "必须有真实实质经营（人员、场所、业务决策、资金流都在当地），仅有注册地不得享受"
+      - 主营业务须属于当地鼓励类产业目录
+      - 空壳注册、只开票不经营属于红线行为
+    rejected_cases:
+      - 某企业在优惠地区注册但实际经营地在外，被追缴已减免税款并加收滞纳金
+    playbook:
+      actions:
+        - 核实当地优惠政策的适用条件与鼓励类产业目录
+        - 评估能否在当地落实真实经营
+      steps:
+        - 核实：确认政策口径与产业目录
+        - 评估：判断能否满足人员、场所、业务决策要求
+        - 论证：形成实质经营的完整证据链
+      evidence: [当地办公场所证明, 当地员工社保记录, 当地业务合同与资金流]
+      cost: 高
+    measure: {}

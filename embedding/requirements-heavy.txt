@@ -1,0 +1,5 @@
+# Heavy dependencies for the real bge-m3 backend (pulls in PyTorch; adds GBs to the image).
+# Only needed when EMBEDDING_BACKEND=bge_m3.
+-r requirements.txt
+FlagEmbedding>=1.3,<2
+torch>=2.4,<3

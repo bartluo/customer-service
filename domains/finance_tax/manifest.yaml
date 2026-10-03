@@ -1,0 +1,105 @@
+# 域包清单 —— 财税域（第一个上线域）
+# 九个组件的定义见技术方案第 3.2 节
+# 本文件由 app/domain_packs/loader.py 在启动时严格校验：字段写错会直接报错并指出位置
+
+domain_id: finance_tax
+name: 财税
+version: 0.2.0
+status: active            # active | planned | disabled
+description: 中国财税法规检索、政策解读、税费计算与合规筹划
+
+# 本域用到的角色码（对应技术方案 10.1 的三个内置角色）
+roles:
+  - client                # 客户：提问、看依据、算税费、导出
+  - reviewer              # 审核专家：审核知识、复核筹划方案
+  - admin                 # 管理员：管账号与授权
+
+# 域路由：判断一个问题属于哪个域（用关键词 + 规则，换成 LLM 分类）
+routing:
+  keywords:               # 命中任一即加权
+    - 税
+    - 增值税
+    - 企业所得税
+    - 个税
+    - 所得税
+    - 附加税费
+    - 印花税
+    - 发票
+    - 申报
+    - 纳税
+    - 税筹
+    - 税收筹划
+    - 税务稽查
+    - 留抵
+    - 进项
+    - 销项
+  include:                # 命中即强烈指向本域
+    - 税务局
+    - 税务机关
+    - 财政部
+    - 国家税务总局
+    - 税目
+    - 税率
+    - 起征点
+    - 纳税申报
+    - 税务登记
+  exclude: []             # 命中即排除本域；本域当前无需排除项
+
+# 九个组件。pending = 已声明待建设；ready = 文件已就位
+components:
+  ontology:
+    status: ready
+    path: ontology.yaml
+  extractor:
+    status: ready
+    path: extractor.yaml
+  retrieval:
+    status: ready
+    path: retrieval.yaml
+  reasoner:
+    status: ready
+    path: reasoner.yaml
+  verifier:
+    status: ready
+    path: ontology.yaml
+    note: 本域的验证规则（禁止引用废止条文等）见 ontology.yaml 的 validations；执行逻辑在引擎层 backend/app/verification（完成）
+  templates:
+    status: ready
+    path: templates.yaml
+    note: 建六段式答案模板；必填段缺失即判生成失败
+  eval_cases:
+    status: pending
+    note: 建评测集
+  glossary:
+    status: pending
+    note: 随法规导入同步建设
+  risk_rules:
+    status: ready
+    path: risk_rules.yaml
+
+# 计算与筹划能力按税种分批建设（知识层全税种覆盖）
+tax_batches:
+  batch_1:
+    - vat
+    - corporate_income_tax
+    - individual_income_tax
+    - surcharges
+    - stamp_duty
+  batch_2:
+    - consumption_tax
+    - property_tax
+    - urban_land_use_tax
+    - land_appreciation_tax
+    - deed_tax
+  batch_3:
+    - resource_tax
+    - environmental_tax
+    - vehicle_vessel_tax
+    - vehicle_purchase_tax
+    - farmland_occupation_tax
+
+# 功能开关
+features:
+  policy_change_alert: true     # 政策变化提醒
+  calculator: true              # 独立税费计算器
+  planning: false               # 筹划：资质主体（F2）落实前保持关闭

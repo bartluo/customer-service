@@ -1,0 +1,71 @@
+# 检索策略：财税域的召回与排序规则
+# 实现，本文件是规则来源
+
+schema_version: "1.0"
+
+# ---------- 三路检索 ----------
+three_routes:
+  structured:
+    description: 结构化精确检索（文号、条款号、税种、效力状态）
+    backend: postgres
+    # 精确命中时权重最高：用户直接报文号或条款号
+    top_k: 10
+  semantic:
+    description: 语义检索（自然语言问题）
+    backend: qdrant
+    collection: kb_articles
+    top_k: 30
+  glossary_expansion:
+    description: 术语扩展（"小规模"→"小规模纳税人"）
+    backend: in_memory
+    # 用域包术语表把用户的口语补成术语，再做语义检索
+    expansion_ratio: 1.5
+
+# ---------- 融合 ----------
+fusion:
+  method: reciprocal_rank_fusion
+  k_constant: 60
+  weights:
+    structured: 1.0      # 精确命中权重最高
+    semantic: 0.8
+    glossary_expansion: 0.5
+
+# ---------- 硬过滤：不满足直接排除，不是降权 ----------
+hard_filters:
+  - code: effect_status_filter
+    name: 效力状态强制过滤
+    rule: "effect_status NOT IN ('repealed','superseded','draft')"
+    critical: true
+    # 这条是财税域的红线：废止条文混进答案就是事故
+  - code: time_point_filter
+    name: 时点过滤
+    rule: "valid_from <= as_of AND (valid_to IS NULL OR valid_to > as_of)"
+    critical: true
+  - code: hierarchy_range
+    name: 位阶范围
+    rule: "hierarchy_rank <= 4"     # 默认不给"税务规范性答复"直接当依据
+  - code: region_filter
+    name: 地域匹配
+    rule: "region IN ('national', :user_region)"
+
+# ---------- 加权：影响排序但不影响是否召回 ----------
+boosts:
+  - code: recent_amendment
+    name: 近期修订优先
+    weight: 0.2
+    rule: "valid_from 在最近 12 个月内"
+  - code: exact_document_number
+    name: 文号精确命中
+    weight: 0.5
+    rule: "查询中出现完整文号"
+  - code: local_normative_penalty
+    name: 地方文件降权
+    weight: -0.2
+    rule: "hierarchy=local_normative 且存在上位法时"
+
+# ---------- 重排 ----------
+rerank:
+  enabled: true
+  top_n: 10
+  # 重排模型在接入；先用意图分类 + 位阶先验代替
+  fallback: heuristic

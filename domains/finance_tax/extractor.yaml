@@ -1,0 +1,94 @@
+# 抽取器配置：把原始法规资料转成结构化条文
+# 导入流水线按本文件执行
+
+schema_version: "1.0"
+
+# ---------- 1. 文号识别 ----------
+document_number:
+  # 我国财税文件文号的实际写法，如 财税〔2019〕39号、国税发〔1994〕155号
+  patterns:
+    - regex: "^财税[〔［\\[]\\d{4}[〕］\\]]\\d+号$"
+      issuer: 财政部
+      ministry_pair: [财政部, 国家税务总局]
+    - regex: "^国税发[〔［\\[]\\d{4}[〕］\\]]\\d+号$"
+      issuer: 国家税务总局
+      ministry_pair: [国家税务总局]
+    - regex: "^税总发[〔［\\[]\\d{4}[〕］\\]]\\d+号$"
+      issuer: 国家税务总局
+    - regex: "^国发[〔［\\[]\\d{4}[〕］\\]]\\d+号$"
+      ministry_pair: [国务院]
+    - regex: "^第\\d+号令$"
+      issuer: 国务院令
+  # 括注形式有三种，解析时统一归一化为〔〕
+  normalize_brackets: true
+  # 识别不出文号时怎么办：不猜，标为待人工确认，绝不编造
+  on_unmatched: mark_for_review
+
+# ---------- 2. 层级判定 ----------
+hierarchy_detection:
+  rules:
+    - match_name: "中华人民共和国.*法$"
+      hierarchy: law
+    - match_name: ".*条例$"
+      hierarchy: administrative_regulation
+    - match_name: ".*办法$"
+      hierarchy: departmental_rule
+    - match_name: ".*公告$"
+      hierarchy: normative_document
+    - match_name: ".*批复$"
+      hierarchy: normative_document
+    - issuer_suffix: "省税务局|市税务局"
+      hierarchy: local_normative
+  on_unmatched: mark_for_review
+
+# ---------- 3. 条文切分 ----------
+article_splitting:
+  # 我国法规条文的实际写法，顺序不能颠倒
+  patterns:
+    - code: chapter
+      regex: "^第[一二三四五六七八九十百零〇\\d]+章\\s*\\S+"
+    - code: section
+      regex: "^第[一二三四五六七八九十百零〇\\d]+节\\s*\\S+"
+    - code: article
+      regex: "^第[一二三四五六七八九十百零〇\\d]+条\\s*"
+    - code: paragraph
+      regex: "^[（(][一二三四五六七八九十百零〇\\d]+[)）]\\s*"
+    - code: item
+      regex: "^[0-9]+[、.]\\s*"
+  # 条的正文里常带多个自然段，"款"由自然段切分得到
+  paragraph_boundary: blank_line_or_indent
+  # 附则、过渡条款不能丢，它们常规定"本法自X年X月X日起施行"
+  must_keep_sections: [附则, 过渡, 施行日期]
+
+# ---------- 4. 时效抽取 ----------
+effect_extraction:
+  effective_date_patterns:
+    - "自(?<date>\\d{4}年\\d{1,2}月\\d{1,2}日)起施行"
+    - "自(?<date>\\d{4}年\\d{1,2}月\\d{1,2}日)起执行"
+    - "自(?<date>\\d{4}年\\d{1,2}月\\d{1,2}日)起施行(?<clause>.*)"
+  repeal_date_patterns:
+    - "自(?<date>\\d{4}年\\d{1,2}月\\d{1,2}日)起废止"
+  # 过渡期条款：给一个日期区间，按区间算有效状态
+  transition_patterns:
+    - "(?<from>\\d{4}年\\d{1,2}月\\d{1,2}日)之前(?:依|按)本法"
+    - "(?<from>\\d{4}年\\d{1,2}月\\d{1,2}日)之后"
+  # 抽不到施行日期时不许猜：标为待确认，且该文件不得直接发布
+  on_missing_effective_date: mark_for_review
+
+# ---------- 5. 来源与版权 ----------
+source:
+  required_fields: [source_url, retrieved_at, issuer]
+  # 记录来源与获取时间，尊重版权与转载规定（技术方案 10.3）
+  store_original_file: true      # 原件存对象存储
+  on_source_missing: reject      # 没有来源的法规一律不收
+
+# ---------- 6. 人工复核出口 ----------
+review:
+  # 以下情况转人工复核台，由审核专家处理（技术方案 4.13）
+  escalate_to_human:
+    - 文号识别失败
+    - 效力层级判定失败
+    - 生效日期缺失
+    - 同一文号存在多个版本且无法确定顺序
+    - 检测到"暂行""试行"等过渡性措辞
+  batch_mode: true     # 批量导入时先抽样 5% 人工确认，再全量

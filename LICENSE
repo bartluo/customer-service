@@ -1,0 +1,231 @@
+个人及企业内部自用许可 1.0
+PERSONAL AND INTERNAL BUSINESS USE LICENSE, VERSION 1.0
+
+版权所有 (c) 2026 bartluo。保留所有权利。
+Copyright (c) 2026 bartluo. All rights reserved.
+
+本许可适用于本仓库下的全部源代码、文档、配置文件和随附资源（以下称"本软件"）。
+你一旦使用、复制、修改或分发本软件的任何部分，即视为已阅读、理解并同意本许可的
+全部条款。若不同意，请勿使用本软件。
+
+【特别说明】本许可不是开源许可（不属于 OSI 认可的开源许可），也不属于自由软件
+许可。本软件属于"源码可见但保留权利"（source-available）的软件。本许可仅授予
+个人自用与企业内部自用所需的最小权利，禁止把本软件本身、本软件的能力或其产出
+结果对外变现，其余权利一律保留。
+
+────────────────────────────────────────────────────────────
+第一条  定义
+────────────────────────────────────────────────────────────
+
+1.1 "本软件"：指本许可随附的计算机程序，包括其源代码、文档、配置文件和随附资源。
+
+1.2 "个人自用"：指自然人为了个人学习、个人研究、技术评估或处理个人事务而使用
+    本软件，且不以直接或间接获取经济利益为目的。
+
+1.3 "商业使用"：指把本软件本身、本软件的能力或其产出结果对外变现、对外交付或
+    对外提供服务的下列行为，包括但不限于：
+    (a) 向客户、付费方或任何第三方提供基于本软件的产品或服务，无论该服务本身
+        是否单独收费；
+    (b) 把本软件作为软件即服务（SaaS）、API 服务、托管服务或在线工具对外提供；
+    (c) 把本软件的全部或实质性部分嵌入、集成到用于销售、许可或对外交付的商业
+        产品中；
+    (d) 以本软件为基础，对外提供收费或免费的技术支持、咨询、培训、代办或部署
+        服务。
+    仅为个人自用或企业内部自用而使用本软件，不属于商业使用。
+
+1.4 "企业内部自用"：指企业或其他组织为自身的经营管理、财务核算、税务申报等内部
+    事务，在其控制的设备上使用本软件及其产出结果，且不实施下列行为：
+    (a) 以本软件为工具对外承接业务或对外提供服务；
+    (b) 把本软件或其产出结果作为商品出售、许可或交付给第三方。
+    企业内部自用不属于商业使用，无需另行取得授权。
+
+1.5 "分发"：指以任何方式向第三方提供本软件或其副本，包括公开发布、上传、转交、
+    出售、赠与或通过网络传输。
+
+────────────────────────────────────────────────────────────
+第二条  授权
+────────────────────────────────────────────────────────────
+
+在遵守本许可全部条款的前提下，版权所有人免费授予你下列非排他、不可转让、不可
+再许可的权利：
+
+2.1 为个人自用或企业内部自用，在你控制的设备上运行、复制、修改本软件；
+
+2.2 在不作任何修改、且不删除或更改本许可与版权声明的前提下，以任何媒介原样
+    分发本软件的完整副本；接收副本的人同样只享有本条与第 2.1 条授予的权利；
+
+2.3 你对本软件作出的修改版本，仅可用于第 2.1 条规定的个人自用与企业内部自用，
+    不得对外分发。
+
+────────────────────────────────────────────────────────────
+第三条  限制
+────────────────────────────────────────────────────────────
+
+3.1 不得将本软件用于任何商业使用（定义见第 1.3 条）。个人自用与企业内部自用
+    （定义见第 1.2、1.4 条）不属于商业使用，无需授权。如需商业使用，必须事先
+    取得版权所有人的书面授权。
+
+3.2 不得分发修改后的版本；不得把本软件的全部或实质性部分重新打包、改名、换皮后
+    作为另一个项目发布。
+
+3.3 不得出售、出租、出借、转授权或以其他方式转让本软件，以及本许可授予的权利。
+
+3.4 不得删除、隐藏或更改本软件中的版权声明、许可文本与作者署名。
+
+3.5 不得使用本软件的名称或作者名义进行任何形式的背书、担保或商业宣传，从而造成
+    与版权所有人存在关联或获得授权的误解。
+
+3.6 法律明确规定且不能通过合同排除的行为（例如个人为学习研究目的而进行的合理
+    使用），不受本许可限制。
+
+────────────────────────────────────────────────────────────
+第四条  第三方组件与数据
+────────────────────────────────────────────────────────────
+
+4.1 本软件可能包含或依赖第三方组件、开源库、模型文件与数据集。这些内容各自适用
+    其自身的许可条款，不受本许可约束；你在单独使用这些第三方内容时，应自行遵守
+    其许可。第 3 条的商业使用限制不改变第三方内容原有的授权范围。
+
+4.2 本软件仓库中随附的法规文本来源于公开渠道，仅用于功能演示与测试。
+
+────────────────────────────────────────────────────────────
+第五条  无担保
+────────────────────────────────────────────────────────────
+
+本软件按"现状"（AS IS）提供，不附带任何明示或默示的担保，包括但不限于对适销性、
+特定用途适用性和不侵权的担保。本软件为技术演示与个人学习性质，不构成任何税务、
+法律或财务意见。使用本软件的全部风险由你自行承担。
+
+────────────────────────────────────────────────────────────
+第六条  责任限制
+────────────────────────────────────────────────────────────
+
+在适用法律允许的最大范围内，版权所有人不对因本软件或本许可引起的任何直接、间接、
+附带、特殊、惩罚性或后果性损失（包括但不限于利润损失、数据丢失、业务中断、税务
+处罚）承担任何责任，无论其基于何种法律理论，也无论是否已被告知该等损失的可能性。
+
+────────────────────────────────────────────────────────────
+第七条  终止
+────────────────────────────────────────────────────────────
+
+7.1 你违反本许可任一条款时，本许可授予你的权利自动终止，无需另行通知。
+
+7.2 权利终止后，你必须立即停止使用本软件，并删除你持有的全部副本。第 3、5、6 条
+    在终止后继续有效。
+
+────────────────────────────────────────────────────────────
+第八条  其他
+────────────────────────────────────────────────────────────
+
+8.1 本许可适用中华人民共和国法律（不含其冲突法规则）。
+
+8.2 本许可未明确授予的权利，均由版权所有人保留。
+
+8.3 本许可以中文版本为正式版本；如附有英文译文，仅供参考，以中文版本为准。
+
+8.4 商业授权及其他授权请求，请联系：luo433593@gmail.com。
+
+────────────────────────────────────────────────────────────
+ENGLISH TRANSLATION (FOR REFERENCE ONLY — THE CHINESE TEXT GOVERNS)
+────────────────────────────────────────────────────────────
+
+Personal and Internal Business Use License, Version 1.0
+Copyright (c) 2026 bartluo. All rights reserved.
+
+This license applies to all source code, documentation, configuration files and
+accompanying resources in this repository (the "Software"). By using, copying,
+modifying or distributing any part of the Software, you agree to all terms of
+this license. If you do not agree, do not use the Software.
+
+NOTE: This is NOT an open source license and is not approved by the OSI. The
+Software is "source-available". This license grants only the minimum rights
+needed for personal use and internal business use, and prohibits monetizing the
+Software, its capabilities or its output for third parties. All rights not
+expressly granted are reserved.
+
+1. Definitions
+   1.1 "Software" means the computer program accompanying this license,
+       including its source code, documentation, configuration files and
+       accompanying resources.
+   1.2 "Personal Use" means use by a natural person for personal study, personal
+       research, technical evaluation or personal affairs, without the purpose
+       of direct or indirect financial gain.
+   1.3 "Commercial Use" means monetizing or delivering the Software itself, its
+       capabilities or its output to third parties, including but not limited
+       to: (a) providing products or services based on the Software to
+       customers, payers or any third party, whether or not separately charged;
+       (b) offering the Software as a software-as-a-service, API service, hosted
+       service or online tool; (c) embedding or integrating the Software, in
+       whole or in substantial part, into a commercial product that is sold,
+       licensed or delivered; (d) providing paid or unpaid technical support,
+       consulting, training, agency or deployment services based on the
+       Software to third parties. Use solely for Personal Use or Internal
+       Business Use is not Commercial Use.
+   1.4 "Internal Business Use" means use by a company or other organization of
+       the Software and its output on devices it controls, for its own internal
+       affairs such as management, accounting and tax filing, provided it does
+       not: (a) take on business for, or provide services to, third parties
+       using the Software as a tool; or (b) sell, license or deliver the
+       Software or its output as a commodity to third parties. Internal
+       Business Use is not Commercial Use and requires no separate permission.
+   1.5 "Distribute" means to make the Software or a copy available to any third
+       party by any means, including publication, upload, transfer, sale, gift
+       or transmission over a network.
+
+2. Grant
+   Subject to your compliance with this license, the copyright holder grants you
+   a free, non-exclusive, non-transferable, non-sublicensable right to:
+   2.1 run, copy and modify the Software on devices you control, for Personal
+       Use or Internal Business Use;
+   2.2 distribute unmodified complete copies of the Software by any medium,
+       provided this license and all copyright notices are kept intact;
+       recipients receive only the rights granted by this section and 2.1;
+   2.3 use your modified versions solely for Personal Use or Internal Business
+       Use under 2.1. Modified versions may not be distributed.
+
+3. Restrictions
+   3.1 You may not use the Software for any Commercial Use. Personal Use and
+       Internal Business Use are not Commercial Use. Commercial Use requires
+       prior written permission from the copyright holder.
+   3.2 You may not distribute modified versions, repackage, rebrand or publish
+       the Software (in whole or in substantial part) as another project.
+   3.3 You may not sell, rent, lend, sublicense or otherwise transfer the
+       Software or the rights granted by this license.
+   3.4 You may not remove, obscure or alter any copyright notice, license text
+       or attribution in the Software.
+   3.5 You may not use the name of the Software or of the author for any
+       endorsement, warranty or commercial promotion, or otherwise imply an
+       affiliation with or authorization from the copyright holder.
+   3.6 Statutory exceptions that cannot be contractually excluded (such as
+       fair use for personal study) are not restricted by this license.
+
+4. Third-Party Components and Data
+   4.1 The Software may include or depend on third-party components, open
+       source libraries, model files and datasets. Those are governed by their
+       own licenses and are not affected by this license.
+   4.2 Sample regulation texts included in this repository come from public
+       sources and are used for demonstration and testing only.
+
+5. No Warranty
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. It is a technical
+   demonstration and does not constitute tax, legal or financial advice.
+
+6. Limitation of Liability
+   TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE COPYRIGHT HOLDER
+   SHALL NOT BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+   EXEMPLARY OR CONSEQUENTIAL DAMAGES ARISING FROM THE SOFTWARE OR THIS
+   LICENSE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+
+7. Termination
+   7.1 Your rights under this license terminate automatically upon any breach.
+   7.2 Upon termination you must stop using the Software and delete all copies.
+       Sections 3, 5 and 6 survive termination.
+
+8. Miscellaneous
+   8.1 This license is governed by the laws of the People's Republic of China.
+   8.2 All rights not expressly granted are reserved.
+   8.3 The Chinese version is the official text; this English version is for
+       reference only.
+   8.4 For commercial licensing, contact: luo433593@gmail.com.

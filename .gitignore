@@ -1,0 +1,47 @@
+# ---------- 环境与密钥 ----------
+.env
+.env.local
+# 验收脚本复用的固定管理员口令（本地文件，不入库）
+.admin_password.local
+*.key
+*.pem
+
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+
+# ---------- Node ----------
+node_modules/
+.next/
+out/
+dist/
+npm-debug.log*
+
+# ---------- 数据与运行时产物 ----------
+data/
+storage/
+*.log
+*.sqlite3
+backups/
+
+# ---------- 编辑器与系统 ----------
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# ---------- 模型文件（体积大，不入库） ----------
+# 单个权重文件可达 2 GB，远超 GitHub 的 100 MB 单文件上限。
+# 只保留下载说明，使用者按说明自行获取模型。
+deploy/models/bge-m3/*
+!deploy/models/bge-m3/下载说明.md
+.cache/
+embedding/.cache/
